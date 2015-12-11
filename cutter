@@ -1,0 +1,17 @@
+#! /usr/bin/env ruby
+
+require './argv_parser'
+require './cutter'
+
+unless system('which -s ffmpeg')
+  puts "Please install ffmpeg"
+  exit
+end
+
+options = ArgvParser.parse(ARGV)
+puts options
+Cutter.new(options).cut
+
+puts 'Press enter to end.'
+gets
+
