@@ -19,29 +19,31 @@ class ArgvParser
   private
 
   def parse_options
-    options = {}
+    options = {
+      range_list: [],
+      volume_list: []
+    }
 
     OptionParser.new do |opts|
-      opts.banner = "Usage: cutter audio_file [options]"
+      opts.banner = "Usage: cutter audio_file [range range_options] [range2 range2_options] ..."
 
-      opts.on('-oOUT', '--out=OUT', 'Out result to folder') do |out|
-        error! "Invalid out dir" unless Dir.exist?(out)
-        options[:out] = out
+      opts.on('-oOUT', '--out=OUT', 'Out result to folder') do |out_dir|
+        error! "Invalid out dir" unless Dir.exist?(out_dir)
+        options[:out_dir] = out_dir
       end
 
-      # range: 0,1.2,-3,5
+      # range: 0,1.2
       # out:
-      #   0-1.2s as 1.mp3
-      #   1.2-3s ignore
-      #   3-5 as 2.mp3
-      opts.on('-rRANGE', '--range=RANGE', Array, 'Audio range definition, 1,-2,3') do |range|
+      #   0-1.2s {index}.mp3
+      opts.on('-rRANGE', '--range=RANGE', Array, 'Audio range definition, 0,2') do |range|
         error! "Invalid range" unless valid_range?(range)
-        options[:range] = range.map(&:to_f)
+        options[:range_list] << range.map(&:to_f)
+        options[:volume_list] << 0
       end
 
-      opts.on('-vVOLUMES', '--volumes=VOLUMES', Array, 'Audio volumes definition, 1,-2') do |volumes|
-        error! "Invalid volumes" unless valid_volumes?(volumes)
-        options[:volumes] = volumes.map(&:to_i)
+      opts.on('-vVOLUMES', '--volumes=VOLUMES', 'Audio volume definition, 0') do |volume|
+        error! "Invalid volume" unless valid_volume?(volume)
+        options[:volume_list][-1] = volume.to_i
       end
 
       # TODO
@@ -51,29 +53,23 @@ class ArgvParser
 
     error! "No input audio file" unless argv.first
     error! "Not found audio file" unless File.exist?(argv.first)
-    error! "No input range" unless options[:range]
+    error! "No input range" unless options[:range_list]
     options[:audio_file] = argv.first
-    options[:out] ||= default_dir
-    options[:volumes] ||= []
+    options[:out_dir] ||= default_dir
 
     options
   end
 
   def valid_range?(range)
-    return false if range.length < 2
+    return false if range.length != 2
     return false unless range.all? {|str| str =~ /^\-?\d{1,4}(\.\d)?$/ }
-    float_range = range.map(&:to_f)
-
-    float_range.each_with_index do |val, index|
-      next if index == 0
-      return false if float_range[index - 1] >= val
-    end
+    return false if range[0].to_f >= range[1].to_f
 
     true
   end
 
-  def valid_volumes?(volumes)
-    volumes.all? {|str| str =~ /^\-?\d{1,3}$/ }
+  def valid_volume?(volume)
+    volume =~ /^\-?\d{1,3}$/
   end
 
   def default_dir

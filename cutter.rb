@@ -1,3 +1,9 @@
+# Options:
+#   audio_file: audio file path
+#   out_dir: out dir
+#   range_list: [[1,2],[2,3], [2,4]]
+#   volume_list: [1, 5, 3]
+#
 class Cutter
   attr_reader :options
 
@@ -9,16 +15,14 @@ class Cutter
     cut_index = 0
     cmd = ['ffmpeg', '-y', "-i #{options[:audio_file]}"]
 
-    options[:range].each_with_index do |end_ts, index|
-      next if index == 0 || end_ts < 0
+    options[:range_list].each do |start_ts, end_ts|
       cut_index += 1
-      start_ts = options[:range][index - 1].abs
       duration = end_ts - start_ts
-      volume = options[:volumes][cut_index - 1]
+      volume = options[:volume_list][cut_index - 1]
 
       cmd << ("-ss %.1f -t %.1f" % [start_ts, duration])
       cmd << ("-af 'volume=%sdB'" % volume) if volume
-      cmd << ("#{options[:out]}/%s.mp3" % cut_index.to_s)
+      cmd << ("#{options[:out_dir]}/%s.mp3" % cut_index.to_s)
     end
 
     puts cmd.join(' ')
